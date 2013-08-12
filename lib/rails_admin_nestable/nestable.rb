@@ -56,13 +56,13 @@ module RailsAdmin
 
             if params['tree_nodes'].present?
               begin
-                ActiveRecord::Base.transaction do
-                  if @nestable_conf.tree?
-                    update_tree params[:tree_nodes]
-                  end
-
-                  if @nestable_conf.list?
-                    update_list params[:tree_nodes]
+                if @abstract_model.model.is_a?(Class) && @abstract_model.model.included_modules.include?(Mongoid::Document)
+                  update_tree params[:tree_nodes] if @nestable_conf.tree?
+                  update_list params[:tree_nodes] if @nestable_conf.list?
+                else
+                  ActiveRecord::Base.transaction do
+                    update_tree params[:tree_nodes] if @nestable_conf.tree?
+                    update_list params[:tree_nodes] if @nestable_conf.list?
                   end
                 end
                 message = "<strong>#{I18n.t('admin.actions.nestable.success')}!</strong>"
@@ -77,7 +77,11 @@ module RailsAdmin
               end
 
               if @nestable_conf.list?
-                @tree_nodes = @abstract_model.model.order(@nestable_conf.options[:position_field])
+                if @abstract_model.model.is_a?(Class) && @abstract_model.model.included_modules.include?(Mongoid::Document)
+                  @tree_nodes = @abstract_model.model.asc(@nestable_conf.options[:position_field])
+                else
+                  @tree_nodes = @abstract_model.model.order(@nestable_conf.options[:position_field])
+                end
               end
 
               render action: @action.template_name
